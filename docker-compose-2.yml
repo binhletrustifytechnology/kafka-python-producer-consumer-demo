@@ -1,0 +1,113 @@
+version: '3'
+
+services:
+  zookeeper-1:
+    image: confluentinc/cp-zookeeper:latest
+    ports:
+      - '22181:2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - kafka-net
+    healthcheck:
+      test: "nc -z localhost 2181"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    expose:
+      - 2181
+
+  zookeeper-2:
+    image: confluentinc/cp-zookeeper:latest
+    ports:
+    - '32181:2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - kafka-net
+    healthcheck:
+      test: "nc -z localhost 2181"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    expose:
+      - 2181
+
+
+  kafka-1:
+    image: confluentinc/cp-kafka:latest
+    ports:
+#      - '9092:9092'
+      - '29092:29092'
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181,zookeeper-2:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+    healthcheck:
+      test: "kafka-topics.sh --bootstrap-server localhost:9092 --list"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kafka-net
+    expose:
+      - 29092
+
+  kafka-2:
+    image: confluentinc/cp-kafka:latest
+    ports:
+    - '39092:39092'
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181,zookeeper-2:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://localhost:39092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+    healthcheck:
+      test: "kafka-topics.sh --bootstrap-server localhost:9092 --list"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kafka-net
+    expose:
+      - 39092
+
+
+#  producer:
+#    build: ./producer
+#    ports:
+#      - '8000:8000'
+#    depends_on:
+#      kafka-1:
+#        condition: service_healthy
+#    networks:
+#      - kafka-net
+
+#  consumer:
+#    build: ./consumer
+#    networks:
+#      - kafka-net
+
+networks:
+  kafka-net:
